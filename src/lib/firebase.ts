@@ -3,15 +3,15 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Firebase configuration - In production, use environment variables
+// Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyBWF52sRLmvXOIVdz_6lnPe7h0oOjXVuuI",
-  authDomain: "koi-restaurant-cd9fa.firebaseapp.com",
-  projectId: "koi-restaurant-cd9fa",
-  storageBucket: "koi-restaurant-cd9fa.firebasestorage.app",
-  messagingSenderId: "714063267417",
-  appId: "1:714063267417:web:51c6530a6d28876d2c5348",
-  measurementId: "G-JKCTC8SLEG"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
