@@ -71,8 +71,8 @@ const CheckoutPage = () => {
       );
       
       setOrderId(newOrderId);
+      clearCart(); // Clear cart immediately after order is created
       setShowSuccessDialog(true);
-      clearCart();
     } catch (error) {
       console.error('Error creating order:', error);
     } finally {
@@ -80,12 +80,17 @@ const CheckoutPage = () => {
     }
   };
 
-  const handleSuccessClose = () => {
+  const handleGoHome = () => {
+    setShowSuccessDialog(false);
+    navigate('/');
+  };
+
+  const handleViewOrder = () => {
     setShowSuccessDialog(false);
     navigate(`/order-success/${orderId}`);
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && !showSuccessDialog && !orderId) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
@@ -308,7 +313,6 @@ const CheckoutPage = () => {
                   <CardContent className="p-6">
                     <h2 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h2>
                     
-                    {/* Items */}
                     <div className="space-y-3 mb-4 max-h-48 overflow-y-auto">
                       {items.map((item) => (
                         <div key={item.id} className="flex justify-between text-sm">
@@ -339,7 +343,6 @@ const CheckoutPage = () => {
                       </div>
                     </div>
 
-                    {/* Payment Method */}
                     <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
                       <div className="flex items-center gap-2 mb-2">
                         <CreditCard className="w-5 h-5 text-orange-500" />
@@ -382,21 +385,32 @@ const CheckoutPage = () => {
       </div>
 
       {/* Success Dialog */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showSuccessDialog} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader className="text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-500" />
             </div>
             <DialogTitle className="text-2xl font-bold">Order Placed Successfully!</DialogTitle>
             <DialogDescription>
-              Thank you for your order. Your order ID is <span className="font-mono font-medium">{orderId}</span>.
+              Thank you for your order. Your order ID is{' '}
+              <span className="font-mono font-medium">{orderId}</span>.
               We'll start preparing your food right away!
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-6">
-            <Button onClick={handleSuccessClose} className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+          <div className="mt-6 flex flex-col gap-3">
+            <Button
+              onClick={handleViewOrder}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+            >
               View Order Details
+            </Button>
+            <Button
+              onClick={handleGoHome}
+              variant="outline"
+              className="w-full"
+            >
+              Back to Home
             </Button>
           </div>
         </DialogContent>

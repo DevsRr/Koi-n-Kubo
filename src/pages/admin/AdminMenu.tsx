@@ -1,374 +1,265 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Search, Edit2, Trash2, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Minus, ShoppingCart, Star, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
-import { subscribeToMenuItems, updateMenuItem, deleteMenuItem } from '@/services/menuService';
+import { categories, menuItems as localMenuItems } from '@/data/menuData';
+import { subscribeToMenuItems, initializeMenuItems } from '@/services/menuService';
+import { useCart } from '@/contexts/CartContext';
 import type { MenuItem } from '@/types';
 
-const AdminMenu = () => {
+const MenuPage = () => {
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<MenuItem | null>(null);
-
-  const categories = [
-    { value: 'katsu-bowls', label: 'Katsu Bowls' },
-    { value: 'ramen', label: 'Ramen' },
-    { value: 'rice-meals', label: 'Rice Meals' },
-    { value: 'extras', label: 'Extras' }
-  ];
+  const [loading, setLoading] = useState(true);
+  const { addToCart, isItemInCart } = useCart();
 
   useEffect(() => {
-    const unsubscribe = subscribeToMenuItems((items) => {
-      setMenuItems(items);
-      setFilteredItems(items);
+    const unsubscribe = subscribeToMenuItems(async (items) => {
+      if (items.length === 0) {
+        // Firestore is empty — initialize from local data
+        await initializeMenuItems(localMenuItems);
+      } else {
+        setMenuItems(items);
+        setLoading(false);
+      }
     });
-
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    let filtered = menuItems;
+  const filteredItems = selectedCategory === 'all'
+    ? menuItems
+    : menuItems.filter(item => item.category === selectedCategory);
 
-    if (searchQuery) {
-      filtered = filtered.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(item => item.category === categoryFilter);
-    }
-
-    setFilteredItems(filtered);
-  }, [menuItems, searchQuery, categoryFilter]);
-
-  const handleToggleAvailability = async (item: MenuItem) => {
-    try {
-      await updateMenuItem(item.id, { isAvailable: !item.isAvailable });
-    } catch (error) {
-      console.error('Error updating item:', error);
-    }
+  const handleQuantityChange = (itemId: string, delta: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [itemId]: Math.max(1, (prev[itemId] || 1) + delta)
+    }));
   };
 
-  const handleToggleBestSeller = async (item: MenuItem) => {
-    try {
-      await updateMenuItem(item.id, { isBestSeller: !item.isBestSeller });
-    } catch (error) {
-      console.error('Error updating item:', error);
+  const handleAddToCart = (item: MenuItem) => {
+    const quantity = quantities[item.id] || 1;
+    if (quantity > item.stock) {
+      toast.error(`Only ${item.stock} items available`);
+      return;
     }
+    addToCart(item, quantity);
+    setQuantities(prev => ({ ...prev, [item.id]: 1 }));
   };
 
-  const handleEdit = (item: MenuItem) => {
-    setEditingItem({ ...item });
-    setIsEditDialogOpen(true);
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
-  const handleSaveEdit = async () => {
-    if (!editingItem) return;
-
-    try {
-      await updateMenuItem(editingItem.id, {
-        name: editingItem.name,
-        description: editingItem.description,
-        price: editingItem.price,
-        category: editingItem.category,
-        stock: editingItem.stock,
-        lowStockThreshold: editingItem.lowStockThreshold
-      });
-      setIsEditDialogOpen(false);
-      setEditingItem(null);
-    } catch (error) {
-      console.error('Error saving item:', error);
-    }
-  };
-
-  const handleDelete = (item: MenuItem) => {
-    setItemToDelete(item);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!itemToDelete) return;
-
-    try {
-      await deleteMenuItem(itemToDelete.id);
-      setIsDeleteDialogOpen(false);
-      setItemToDelete(null);
-    } catch (error) {
-      console.error('Error deleting item:', error);
-    }
-  };
-
-  const getCategoryLabel = (category: string) => {
-    return categories.find(c => c.value === category)?.label || category;
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
-      <div className="pt-24 pb-12">
+
+      {/* Header */}
+      <div className="pt-24 pb-8 bg-gradient-to-b from-gray-900 to-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col md:flex-row md:items-center md:justify-between mb-8"
-          >
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Menu Management</h1>
-              <p className="text-gray-600">Manage your menu items and availability</p>
-            </div>
-            <Button className="mt-4 md:mt-0 bg-orange-500 hover:bg-orange-600 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Item
-            </Button>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Our <span className="text-orange-500">Menu</span>
+            </h1>
+            <p className="text-gray-400 max-w-2xl mx-auto">
+              Discover our delicious selection of Japanese-Filipino fusion dishes,
+              crafted with love and the freshest ingredients.
+            </p>
           </motion.div>
-
-          {/* Filters */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex flex-col md:flex-row gap-4 mb-6"
-          >
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search menu items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </motion.div>
-
-          {/* Menu Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          >
-            {filteredItems.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className="overflow-hidden">
-                  <div className="relative aspect-square">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://placehold.co/400x400/f3f4f6/374151?text=${encodeURIComponent(item.name)}`;
-                      }}
-                    />
-                    <div className="absolute top-2 right-2 flex gap-2">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4 text-gray-600" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item)}
-                        className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                    {!item.isAvailable && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Badge variant="destructive" className="text-lg px-4 py-2">
-                          Unavailable
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-bold text-gray-900">{item.name}</h3>
-                        <p className="text-sm text-gray-500">{getCategoryLabel(item.category)}</p>
-                      </div>
-                      <p className="font-bold text-orange-500">₱{item.price.toFixed(2)}</p>
-                    </div>
-
-                    <div className="flex items-center gap-4 mt-4">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={item.isAvailable}
-                          onCheckedChange={() => handleToggleAvailability(item)}
-                        />
-                        <span className="text-sm text-gray-600">
-                          {item.isAvailable ? 'Available' : 'Unavailable'}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleToggleBestSeller(item)}
-                        className={`p-1 rounded ${item.isBestSeller ? 'bg-orange-100 text-orange-500' : 'bg-gray-100 text-gray-400'}`}
-                      >
-                        <Star className={`w-4 h-4 ${item.isBestSeller ? 'fill-current' : ''}`} />
-                      </button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          {filteredItems.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No menu items found</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Menu Item</DialogTitle>
-          </DialogHeader>
-          {editingItem && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input
-                  value={editingItem.name}
-                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={editingItem.description}
-                  onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Price (₱)</Label>
-                  <Input
-                    type="number"
-                    value={editingItem.price}
-                    onChange={(e) => setEditingItem({ ...editingItem, price: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={editingItem.category}
-                    onValueChange={(value) => setEditingItem({ ...editingItem, category: value as MenuItem['category'] })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Stock</Label>
-                  <Input
-                    type="number"
-                    value={editingItem.stock}
-                    onChange={(e) => setEditingItem({ ...editingItem, stock: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Low Stock Threshold</Label>
-                  <Input
-                    type="number"
-                    value={editingItem.lowStockThreshold}
-                    onChange={(e) => setEditingItem({ ...editingItem, lowStockThreshold: parseInt(e.target.value) })}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEdit} className="bg-orange-500 hover:bg-orange-600 text-white">
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Category Filter */}
+      <div className="sticky top-16 z-40 bg-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 py-4 overflow-x-auto scrollbar-hide">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
+                  selectedCategory === category.id
+                    ? 'bg-orange-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span>{category.icon}</span>
+                <span className="font-medium">{category.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
-          </DialogHeader>
-          <p>Are you sure you want to delete &quot;{itemToDelete?.name}&quot;? This action cannot be undone.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmDelete} variant="destructive">
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Menu Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500" />
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedCategory}
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            >
+              {filteredItems.map((item) => {
+                const isSoldOut = item.stock <= 0 || !item.isAvailable;
+                const isLowStock = item.stock > 0 && item.stock <= item.lowStockThreshold;
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    variants={itemVariants}
+                    layout
+                    className="group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300"
+                  >
+                    {/* Image */}
+                    <div className="relative aspect-square overflow-hidden">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className={`w-full h-full object-cover transition-transform duration-500 ${isSoldOut ? 'grayscale opacity-60' : 'group-hover:scale-110'}`}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://placehold.co/400x400/f3f4f6/374151?text=${encodeURIComponent(item.name)}`;
+                        }}
+                      />
+
+                      {/* Sold Out Overlay */}
+                      {isSoldOut && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <div className="bg-red-600 text-white font-bold text-xl px-6 py-2 rounded-full rotate-[-15deg] shadow-lg">
+                            SOLD OUT
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Badges */}
+                      <div className="absolute top-3 left-3 flex flex-col gap-2">
+                        {item.isBestSeller && !isSoldOut && (
+                          <Badge className="bg-orange-500 text-white flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-current" />
+                            Best Seller
+                          </Badge>
+                        )}
+                        {isLowStock && !isSoldOut && (
+                          <Badge className="bg-yellow-500 text-white">
+                            Only {item.stock} left!
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Price Tag */}
+                      {!isSoldOut && (
+                        <div className="absolute bottom-3 right-3">
+                          <span className="bg-white/90 backdrop-blur-sm text-gray-900 font-bold px-3 py-1 rounded-full shadow-lg">
+                            ₱{(item?.price || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className={`font-bold text-lg transition-colors ${isSoldOut ? 'text-gray-400' : 'text-gray-900 group-hover:text-orange-500'}`}>
+                          {item.name}
+                        </h3>
+                        <span className={`font-bold ${isSoldOut ? 'text-gray-400' : 'text-orange-500'}`}>
+                          ₱{(item?.price || 0).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        {item.description}
+                      </p>
+
+                      {/* Stock Indicator */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className={`w-2 h-2 rounded-full ${
+                          isSoldOut ? 'bg-red-500' : isLowStock ? 'bg-yellow-500' : 'bg-green-500'
+                        }`} />
+                        <span className={`text-xs font-medium ${
+                          isSoldOut ? 'text-red-500' : isLowStock ? 'text-yellow-600' : 'text-gray-500'
+                        }`}>
+                          {isSoldOut
+                            ? 'Sold Out'
+                            : isLowStock
+                              ? `Only ${item.stock} left`
+                              : 'In Stock'}
+                        </span>
+                      </div>
+
+                      {/* Add to Cart */}
+                      {!isSoldOut ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center bg-gray-100 rounded-lg">
+                            <button
+                              onClick={() => handleQuantityChange(item.id, -1)}
+                              className="p-2 hover:bg-gray-200 rounded-l-lg transition-colors"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="w-8 text-center font-medium">
+                              {quantities[item.id] || 1}
+                            </span>
+                            <button
+                              onClick={() => handleQuantityChange(item.id, 1)}
+                              className="p-2 hover:bg-gray-200 rounded-r-lg transition-colors"
+                              disabled={(quantities[item.id] || 1) >= item.stock}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <Button
+                            onClick={() => handleAddToCart(item)}
+                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                            disabled={isItemInCart(item.id)}
+                          >
+                            {isItemInCart(item.id) ? (
+                              <><Check className="w-4 h-4 mr-2" />Added</>
+                            ) : (
+                              <><ShoppingCart className="w-4 h-4 mr-2" />Add</>
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button disabled className="w-full bg-gray-200 text-gray-400 cursor-not-allowed">
+                          Sold Out
+                        </Button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {!loading && filteredItems.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
+            <p className="text-gray-500 text-lg">No items found in this category.</p>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default AdminMenu;
+export default MenuPage;

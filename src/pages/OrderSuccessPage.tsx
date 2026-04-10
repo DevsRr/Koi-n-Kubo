@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Clock, MapPin, Phone, Package } from 'lucide-react';
+import { Check, Clock, MapPin, Phone, Package, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ const OrderSuccessPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -26,7 +27,6 @@ const OrderSuccessPage = () => {
         setLoading(false);
       }
     };
-
     fetchOrder();
   }, [orderId]);
 
@@ -102,11 +102,7 @@ const OrderSuccessPage = () => {
           </motion.div>
 
           {/* Order Details */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Card className="mb-6">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
@@ -120,7 +116,6 @@ const OrderSuccessPage = () => {
                     </Badge>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
@@ -128,10 +123,7 @@ const OrderSuccessPage = () => {
                       <span className="text-sm text-gray-500">Order Date</span>
                     </div>
                     <p className="font-medium">
-                      {order.createdAt.toLocaleString('en-PH', {
-                        dateStyle: 'medium',
-                        timeStyle: 'short'
-                      })}
+                      {order.createdAt.toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
                     </p>
                   </div>
                   <div>
@@ -147,11 +139,7 @@ const OrderSuccessPage = () => {
           </motion.div>
 
           {/* Delivery Address */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <Card className="mb-6">
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -161,16 +149,10 @@ const OrderSuccessPage = () => {
                 <div className="space-y-1">
                   <p className="font-medium">{order.customerName}</p>
                   <p className="text-gray-600">{order.deliveryAddress.street}</p>
-                  <p className="text-gray-600">
-                    {order.deliveryAddress.barangay}, {order.deliveryAddress.city}
-                  </p>
-                  <p className="text-gray-600">
-                    {order.deliveryAddress.province}, {order.deliveryAddress.zipCode}
-                  </p>
+                  <p className="text-gray-600">{order.deliveryAddress.barangay}, {order.deliveryAddress.city}</p>
+                  <p className="text-gray-600">{order.deliveryAddress.province}, {order.deliveryAddress.zipCode}</p>
                   {order.deliveryAddress.landmark && (
-                    <p className="text-gray-500 text-sm mt-2">
-                      Landmark: {order.deliveryAddress.landmark}
-                    </p>
+                    <p className="text-gray-500 text-sm mt-2">Landmark: {order.deliveryAddress.landmark}</p>
                   )}
                 </div>
               </CardContent>
@@ -178,36 +160,28 @@ const OrderSuccessPage = () => {
           </motion.div>
 
           {/* Order Items */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <Card className="mb-6">
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Package className="w-5 h-5 text-orange-500" />
                   <h2 className="text-lg font-bold text-gray-900">Order Items</h2>
                 </div>
-                
                 <div className="space-y-4">
-                  {order.items.map((item, index) => (
+                  {(order.items || []).map((item, index) => (
                     <div key={index} className="flex justify-between items-center py-2 border-b last:border-0">
                       <div>
                         <p className="font-medium">{item.name}</p>
                         <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                       </div>
-                      <p className="font-medium">
-                        ₱{(item.price * item.quantity).toFixed(2)}
-                      </p>
+                      <p className="font-medium">₱{((item?.price || 0) * (item?.quantity || 0)).toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
-
                 <div className="border-t mt-4 pt-4">
                   <div className="flex justify-between text-gray-600 mb-2">
                     <span>Subtotal</span>
-                    <span>₱{order.total.toFixed(2)}</span>
+                    <span>₱{(order?.total || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-gray-600 mb-2">
                     <span>Delivery Fee</span>
@@ -215,7 +189,7 @@ const OrderSuccessPage = () => {
                   </div>
                   <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t">
                     <span>Total</span>
-                    <span>₱{order.total.toFixed(2)}</span>
+                    <span>₱{(order?.total || 0).toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -223,11 +197,7 @@ const OrderSuccessPage = () => {
           </motion.div>
 
           {/* Payment Method */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
             <Card className="mb-8">
               <CardContent className="p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Payment Method</h2>
@@ -251,15 +221,18 @@ const OrderSuccessPage = () => {
             transition={{ delay: 0.5 }}
             className="flex flex-col sm:flex-row gap-4"
           >
+            <Button
+              onClick={() => navigate('/')}
+              className="flex-1 bg-gray-800 hover:bg-gray-900 text-white flex items-center justify-center gap-2"
+            >
+              <Home className="w-4 h-4" />
+              Back to Home
+            </Button>
             <Link to="/orders" className="flex-1">
-              <Button variant="outline" className="w-full">
-                View All Orders
-              </Button>
+              <Button variant="outline" className="w-full">View All Orders</Button>
             </Link>
             <Link to="/menu" className="flex-1">
-              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
-                Order More
-              </Button>
+              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Order More</Button>
             </Link>
           </motion.div>
         </div>

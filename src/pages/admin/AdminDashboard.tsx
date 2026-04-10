@@ -70,7 +70,7 @@ const AdminDashboard = () => {
   const statCards = [
     {
       title: "Today's Sales",
-      value: `₱${stats.todaySales.toFixed(2)}`,
+      value: `₱${(stats?.todaySales || 0).toFixed(2)}`,
       icon: DollarSign,
       color: 'bg-green-500',
       link: '/admin/analytics'
@@ -182,7 +182,7 @@ const AdminDashboard = () => {
                             <p className="text-xs text-gray-500">{order.customerName}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium">₱{order.total.toFixed(2)}</p>
+                            <p className="font-medium">₱{(order?.total || 0).toFixed(2)}</p>
                             <Badge className={`${getStatusColor(order.status)} text-white text-xs`}>
                               {order.status}
                             </Badge>
