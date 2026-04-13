@@ -38,8 +38,9 @@ const AdminOrders = () => {
 
   useEffect(() => {
     const unsubscribe = subscribeToOrders((updatedOrders) => {
-      setOrders(updatedOrders);
-      setFilteredOrders(updatedOrders);
+      console.log('Orders:', updatedOrders); // DEBUG
+      setOrders(updatedOrders || []);
+      setFilteredOrders(updatedOrders || []);
     });
 
     return () => unsubscribe();
@@ -50,9 +51,9 @@ const AdminOrders = () => {
 
     if (searchQuery) {
       filtered = filtered.filter(order =>
-        order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customerEmail.toLowerCase().includes(searchQuery.toLowerCase())
+        (order.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (order.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (order.customerEmail || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -92,12 +93,24 @@ const AdminOrders = () => {
     { value: 'cancelled', label: 'Cancelled' }
   ];
 
+  // ✅ SAFE DATE HANDLER
+  const formatDate = (date: any) => {
+    try {
+      if (!date) return 'N/A';
+      if (date?.toDate) return date.toDate().toLocaleString('en-PH');
+      return new Date(date).toLocaleString('en-PH');
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
       <div className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -118,12 +131,13 @@ const AdminOrders = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search orders by ID, name, or email..."
+                placeholder="Search orders..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-48">
                 <Filter className="w-4 h-4 mr-2" />
@@ -140,183 +154,96 @@ const AdminOrders = () => {
             </Select>
           </motion.div>
 
-          {/* Orders Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
+          {/* Orders */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredOrders.map((order, index) => (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+              <Card
+                key={order.id || index}
+                className="cursor-pointer hover:shadow-lg"
+                onClick={() => {
+                  setSelectedOrder(order);
+                  setIsDetailOpen(true);
+                }}
               >
-                <Card 
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setIsDetailOpen(true);
-                  }}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-mono font-medium text-sm">{order.id}</p>
-                        <p className="text-xs text-gray-500">
-                          {order.createdAt.toLocaleString('en-PH', {
-                            dateStyle: 'short',
-                            timeStyle: 'short'
-                          })}
-                        </p>
-                      </div>
-                      <Badge className={`${getStatusColor(order.status)} text-white`}>
-                        {order.status}
-                      </Badge>
-                    </div>
+                <CardContent className="p-4">
 
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="truncate">{order.customerName}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <span>{order.customerPhone}</span>
-                      </div>
+                  <div className="flex justify-between mb-3">
+                    <div>
+                      <p className="font-mono text-sm">{order.id || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatDate(order.createdAt)}
+                      </p>
                     </div>
+                    <Badge className={`${getStatusColor(order.status)} text-white`}>
+                      {order.status}
+                    </Badge>
+                  </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t">
-                      <span className="text-sm text-gray-600">
-                        {order.items.length} item(s)
-                      </span>
-                      <span className="font-bold text-lg">
-                        ₱{order.total.toFixed(2)}
-                      </span>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="w-4 h-4 text-gray-400" />
+                      {order.customerName || 'N/A'}
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4 text-gray-400" />
+                      {order.customerPhone || 'N/A'}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between pt-3 border-t">
+                    <span className="text-sm text-gray-600">
+                      {(order.items || []).length} item(s)
+                    </span>
+                    <span className="font-bold">
+                      ₱{(order.total ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+
+                </CardContent>
+              </Card>
             ))}
-          </motion.div>
+          </div>
 
           {filteredOrders.length === 0 && (
             <div className="text-center py-12">
               <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No orders found</p>
+              <p>No orders found</p>
             </div>
           )}
+
         </div>
       </div>
 
-      {/* Order Detail Dialog */}
+      {/* Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent>
           {selectedOrder && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>Order Details</span>
-                  <Badge className={`${getStatusColor(selectedOrder.status)} text-white`}>
-                    {selectedOrder.status}
-                  </Badge>
-                </DialogTitle>
+                <DialogTitle>Order Details</DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-6">
-                {/* Order Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Order ID</p>
-                    <p className="font-mono font-medium">{selectedOrder.id}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Order Date</p>
-                    <p>{selectedOrder.createdAt.toLocaleString('en-PH')}</p>
-                  </div>
-                </div>
+              <div className="space-y-4">
 
-                {/* Customer Info */}
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium mb-3">Customer Information</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span>{selectedOrder.customerName}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <span>{selectedOrder.customerPhone}</span>
-                    </div>
-                  </div>
-                </div>
+                <p><strong>ID:</strong> {selectedOrder.id}</p>
+                <p><strong>Date:</strong> {formatDate(selectedOrder.createdAt)}</p>
 
-                {/* Delivery Address */}
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium mb-3">Delivery Address</h3>
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400 mt-1" />
-                    <div>
-                      <p>{selectedOrder.deliveryAddress.street}</p>
-                      <p>{selectedOrder.deliveryAddress.barangay}, {selectedOrder.deliveryAddress.city}</p>
-                      <p>{selectedOrder.deliveryAddress.province}, {selectedOrder.deliveryAddress.zipCode}</p>
-                      {selectedOrder.deliveryAddress.landmark && (
-                        <p className="text-sm text-gray-500 mt-1">
-                          Landmark: {selectedOrder.deliveryAddress.landmark}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Items */}
                 <div>
-                  <h3 className="font-medium mb-3">Order Items</h3>
-                  <div className="space-y-2">
-                    {selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between py-2 border-b last:border-0">
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
-                        </div>
-                        <p className="font-medium">₱{(item.price * item.quantity).toFixed(2)}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-between text-lg font-bold mt-4 pt-4 border-t">
-                    <span>Total</span>
-                    <span>₱{selectedOrder.total.toFixed(2)}</span>
-                  </div>
+                  <h3>Items</h3>
+                  {(selectedOrder.items || []).map((item, i) => (
+                    <div key={i} className="flex justify-between">
+                      <span>{item.name}</span>
+                      <span>
+                        ₱{((item.price ?? 0) * (item.quantity ?? 0)).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Update Status */}
-                <div>
-                  <h3 className="font-medium mb-3">Update Status</h3>
-                  <Select
-                    value={selectedOrder.status}
-                    onValueChange={(value) => handleStatusChange(selectedOrder.id, value as Order['status'])}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="font-bold">
+                  Total: ₱{(selectedOrder.total ?? 0).toFixed(2)}
                 </div>
 
-                {selectedOrder.notes && (
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <h3 className="font-medium mb-2">Order Notes</h3>
-                    <p className="text-sm">{selectedOrder.notes}</p>
-                  </div>
-                )}
               </div>
             </>
           )}
