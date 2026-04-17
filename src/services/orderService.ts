@@ -54,9 +54,13 @@ export const createOrder = async (
 
     const orderRef = await addDoc(collection(db, ORDERS_COLLECTION), orderData);
     
-    // Decrement stock for each item
-    for (const item of items) {
-      await decrementStock(item.id, item.quantity);
+    // Decrement stock - wrapped separately so order still saves if this fails
+    try {
+      for (const item of items) {
+        await decrementStock(item.id, item.quantity);
+      }
+    } catch (stockError) {
+      console.warn('Stock decrement failed (order still saved):', stockError);
     }
     
     return orderRef.id;

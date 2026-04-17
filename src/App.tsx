@@ -19,6 +19,7 @@ import AdminMenu from '@/pages/admin/AdminMenu';
 import AdminStock from '@/pages/admin/AdminStock';
 import AdminAnalytics from '@/pages/admin/AdminAnalytics';
 import CashierDashboard from '@/pages/cashier/CashierDashboard';
+import POSPage from '@/pages/cashier/POSPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ 
@@ -30,9 +31,7 @@ const ProtectedRoute = ({
   requireAdmin?: boolean;
   requireCashier?: boolean;
 }) => {
-  const { currentUser, loading, isAdmin, isCashier, userData } = useAuth();
-
-  console.log('ProtectedRoute check:', { loading, isAdmin, isCashier, requireAdmin, requireCashier, role: userData?.role });
+  const { currentUser, loading, isAdmin, isCashier } = useAuth();
   
   if (loading) {
     return (
@@ -60,24 +59,100 @@ const ProtectedRoute = ({
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public Routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/menu" element={<MenuPage />} />
       <Route path="/cart" element={<CartPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       
-      <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-      <Route path="/order-success/:orderId" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
-      <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+      {/* Protected Customer Routes */}
+      <Route 
+        path="/checkout" 
+        element={
+          <ProtectedRoute>
+            <CheckoutPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/order-success/:orderId" 
+        element={
+          <ProtectedRoute>
+            <OrderSuccessPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/orders" 
+        element={
+          <ProtectedRoute>
+            <OrdersPage />
+          </ProtectedRoute>
+        } 
+      />
       
-      <Route path="/cashier" element={<ProtectedRoute requireCashier><CashierDashboard /></ProtectedRoute>} />
+      {/* Cashier Routes */}
+      <Route 
+        path="/cashier" 
+        element={
+          <ProtectedRoute requireCashier>
+            <CashierDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/cashier/pos" 
+        element={
+          <ProtectedRoute requireCashier>
+            <POSPage />
+          </ProtectedRoute>
+        } 
+      />
 
-      <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
-      <Route path="/admin/orders" element={<ProtectedRoute requireAdmin><AdminOrders /></ProtectedRoute>} />
-      <Route path="/admin/menu" element={<ProtectedRoute requireAdmin><AdminMenu /></ProtectedRoute>} />
-      <Route path="/admin/stock" element={<ProtectedRoute requireAdmin><AdminStock /></ProtectedRoute>} />
-      <Route path="/admin/analytics" element={<ProtectedRoute requireAdmin><AdminAnalytics /></ProtectedRoute>} />
+      {/* Admin Routes */}
+      <Route 
+        path="/admin" 
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/orders" 
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminOrders />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/menu" 
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminMenu />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/stock" 
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminStock />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/analytics" 
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminAnalytics />
+          </ProtectedRoute>
+        } 
+      />
       
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
