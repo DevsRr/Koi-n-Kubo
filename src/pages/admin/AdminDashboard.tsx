@@ -13,7 +13,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
-import { getTodayOrders, getPendingOrdersCount, subscribeToOrders } from '@/services/orderService';
+import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { subscribeToOrders } from '@/services/orderService';
 import { subscribeToStockAlerts } from '@/services/menuService';
 import type { Order, StockAlert, DashboardStats } from '@/types';
 
@@ -29,29 +31,37 @@ const AdminDashboard = () => {
   const [lowStockAlerts, setLowStockAlerts] = useState<StockAlert[]>([]);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [todayOrders, pendingCount] = await Promise.all([
-          getTodayOrders(),
-          getPendingOrdersCount()
-        ]);
+    // ── Real-time today's orders (includes both online + POS source) ──────
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        const todaySales = todayOrders.reduce((sum, order) => sum + order.total, 0);
+    // Listen to ALL orders (online + POS) for today's sales total
+    const todayQ = query(
+      collection(db, 'orders'),
+      where('createdAt', '>=', Timestamp.fromDate(today)),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubToday = onSnapshot(todayQ, (snap) => {
+      const todayOrders = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Order[];
+      const todaySales = todayOrders.reduce((s, o) => s + ((o as any).total || 0), 0);
+      setStats(prev => ({
+        ...prev,
+        todaySales,
+        todayOrders: todayOrders.length,
+      }));
+    });
 
-        setStats(prev => ({
-          ...prev,
-          todaySales,
-          todayOrders: todayOrders.length,
-          pendingOrders: pendingCount
-        }));
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-      }
-    };
+    // Listen to pending/confirmed/preparing orders for live pending count
+    const pendingQ = query(
+      collection(db, 'orders'),
+      where('status', 'in', ['pending', 'confirmed', 'preparing']),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubPending = onSnapshot(pendingQ, (snap) => {
+      setStats(prev => ({ ...prev, pendingOrders: snap.size }));
+    });
 
-    fetchInitialData();
-
-    // Subscribe to real-time updates
+    // All orders feed (recent 5 for dashboard)
     const unsubscribeOrders = subscribeToOrders((orders) => {
       setRecentOrders(orders.slice(0, 5));
     });
@@ -62,6 +72,8 @@ const AdminDashboard = () => {
     });
 
     return () => {
+      unsubToday();
+      unsubPending();
       unsubscribeOrders();
       unsubscribeAlerts();
     };
