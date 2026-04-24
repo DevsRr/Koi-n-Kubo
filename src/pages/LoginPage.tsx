@@ -149,13 +149,6 @@ const LoginPage = () => {
                 </Link>
               </p>
             </div>
-
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
-              <p className="font-medium mb-2">Demo Accounts:</p>
-              <p>Admin: admin@koinkubo.com / admin123</p>
-              <p>Cashier: cashier@koinkubo.com / cashier123</p>
-              <p>Customer: user@example.com / user123</p>
-            </div>
           </CardContent>
         </Card>
       </motion.div>
