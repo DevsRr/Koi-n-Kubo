@@ -1,0 +1,17 @@
+{
+  "routes": [
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-maintenance-mode",
+          "value": "true"
+        }
+      ],
+      "status": 503,
+      "dest": "/maintenance.html",
+      "continue": false
+    }
+  ]
+}
